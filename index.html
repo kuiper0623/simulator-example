@@ -1,602 +1,657 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>중3 사회 - 인구 피라미드 시뮬레이터</title>
-    <!-- Tailwind CSS for modern responsive styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js for dynamic population pyramid plotting -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Google Font: Noto Sans KR -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Noto Sans KR', sans-serif;
-            background-color: #f8fafc;
-        }
-        .custom-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #4f46e5;
-            cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            transition: transform 0.1s ease-in-out;
-        }
-        .custom-slider::-webkit-slider-thumb:hover {
-            transform: scale(1.15);
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>인구 피라미드 시뮬레이터 — 중3 사회</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+<style>
+  :root{
+    --bg:#E6EAEC;
+    --paper:#FFFFFF;
+    --ink:#131C24;
+    --muted:#61707C;
+    --line:#C9D2D8;
+    --male:#24607F;
+    --female:#B24466;
+    --wash-y:#FBF0DA; --edge-y:#C08018;   /* 유소년 */
+    --wash-w:#E5EFE7; --edge-w:#3F7D52;   /* 생산연령 */
+    --wash-o:#ECE7F3; --edge-o:#6E56A8;   /* 노년 */
+    --sans:"Pretendard","Pretendard Variable","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
+    --mono:ui-monospace,"SFMono-Regular","Menlo","Consolas","D2Coding",monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1240px;margin:0 auto;padding:28px 20px 64px}
+
+  /* ── 머리말 ───────────────────────────── */
+  .eyebrow{
+    font-size:12px;letter-spacing:.16em;font-weight:700;
+    color:var(--muted);text-transform:none;margin:0 0 6px;
+  }
+  h1{
+    font-size:clamp(26px,3.4vw,40px);font-weight:800;letter-spacing:-.03em;
+    margin:0 0 6px;line-height:1.15;
+  }
+  .lede{margin:0;color:var(--muted);font-size:15px;max-width:62ch}
+  .rule{height:2px;background:var(--ink);margin:18px 0 22px;opacity:.85}
+
+  /* ── 조작판 ───────────────────────────── */
+  .controls{
+    background:var(--paper);border:1px solid var(--line);border-radius:10px;
+    padding:18px 20px;margin-bottom:18px;
+  }
+  .ctrl-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px 28px}
+  .field label{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px}
+  .field .nm{font-weight:700;font-size:15px}
+  .field .val{font-family:var(--mono);font-weight:700;font-size:19px;font-variant-numeric:tabular-nums}
+  .field .unit{font-size:12px;color:var(--muted);font-weight:500;margin-left:2px}
+  input[type=range]{
+    width:100%;height:26px;margin:0;background:transparent;cursor:pointer;
+    -webkit-appearance:none;appearance:none;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:6px;background:var(--line);border-radius:3px}
+  input[type=range]::-moz-range-track{height:6px;background:var(--line);border-radius:3px}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:22px;height:22px;border-radius:50%;
+    background:var(--ink);border:3px solid var(--paper);margin-top:-8px;
+    box-shadow:0 1px 3px rgba(0,0,0,.3);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:16px;height:16px;border-radius:50%;background:var(--ink);
+    border:3px solid var(--paper);box-shadow:0 1px 3px rgba(0,0,0,.3);
+  }
+  input[type=range]:focus-visible{outline:3px solid var(--edge-o);outline-offset:4px;border-radius:6px}
+  .scale{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:2px}
+
+  .presets{
+    display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+    margin-top:16px;padding-top:14px;border-top:1px solid var(--line);
+  }
+  .presets .tag{font-size:12px;font-weight:700;color:var(--muted);margin-right:2px}
+  button{font-family:inherit}
+  .chip{
+    border:1px solid var(--line);background:var(--bg);color:var(--ink);
+    padding:6px 12px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;
+  }
+  .chip:hover{border-color:var(--ink)}
+  .chip:focus-visible{outline:3px solid var(--edge-o);outline-offset:2px}
+  .chip[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .refbox{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+  .refbox select{
+    font-family:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--line);
+    border-radius:6px;background:var(--paper);color:var(--ink);
+  }
+
+  /* ── 본체 ─────────────────────────────── */
+  .main{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,1fr);gap:18px;align-items:start}
+  .panel{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  .panel h2{
+    font-size:12px;letter-spacing:.14em;font-weight:700;color:var(--muted);
+    margin:0 0 10px;
+  }
+  svg.pyramid{width:100%;height:auto;display:block}
+  svg.pyramid text{font-family:var(--sans)}
+  svg.pyramid text.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .legend{display:flex;gap:16px;font-size:12px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+  /* 지표 카드 */
+  .card{
+    border:1px solid var(--line);border-left-width:5px;border-radius:8px;
+    padding:10px 13px;margin-bottom:10px;
+  }
+  .card .lab{font-size:13px;font-weight:700}
+  .card .rng{font-size:11px;color:var(--muted);font-weight:500;margin-left:4px}
+  .card .pct{
+    font-family:var(--mono);font-size:34px;font-weight:700;letter-spacing:-.02em;
+    font-variant-numeric:tabular-nums;line-height:1.1;
+  }
+  .card .pct span{font-size:16px;font-weight:600;margin-left:2px}
+  .card .mini{height:5px;background:rgba(0,0,0,.09);border-radius:3px;overflow:hidden;margin-top:4px}
+  .card .mini b{display:block;height:100%;border-radius:3px}
+  #cYouth{background:var(--wash-y);border-left-color:var(--edge-y)}
+  #cWork {background:var(--wash-w);border-left-color:var(--edge-w)}
+  #cOld  {background:var(--wash-o);border-left-color:var(--edge-o)}
+  #cYouth .mini b{background:var(--edge-y)}
+  #cWork  .mini b{background:var(--edge-w)}
+  #cOld   .mini b{background:var(--edge-o)}
+
+  table.stats{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
+  table.stats th{
+    text-align:left;font-weight:600;color:var(--muted);
+    padding:5px 0;border-bottom:1px solid var(--line);white-space:nowrap;
+  }
+  table.stats td{
+    text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;
+    font-weight:700;padding:5px 0;border-bottom:1px solid var(--line);
+  }
+  table.stats tr:last-child th,table.stats tr:last-child td{border-bottom:0}
+  .typebox{
+    margin-top:12px;padding:10px 12px;border-radius:8px;background:var(--bg);
+    border:1px solid var(--line);
+  }
+  .typebox .k{font-size:11px;letter-spacing:.12em;color:var(--muted);font-weight:700}
+  .typebox .v{font-size:22px;font-weight:800;letter-spacing:-.02em}
+  .typebox .why{font-size:12px;color:var(--muted);margin-top:2px}
+
+  /* ── 질문 / 각주 ──────────────────────── */
+  .qbox{
+    margin-top:20px;background:var(--paper);border:1px solid var(--line);
+    border-top:4px solid var(--ink);border-radius:10px;padding:18px 20px;
+  }
+  .qbox h2{font-size:12px;letter-spacing:.14em;color:var(--muted);font-weight:700;margin:0 0 12px}
+  .q{display:grid;grid-template-columns:34px 1fr;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+  .q:first-of-type{border-top:0;padding-top:0}
+  .q .n{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--muted);line-height:1.2}
+  .q p{margin:0;font-size:15px}
+  .q .hint{margin-top:5px;font-size:13px;color:var(--muted)}
+
+  details.notes{
+    margin-top:18px;background:var(--paper);border:1px solid var(--line);
+    border-radius:10px;padding:12px 18px;font-size:13px;
+  }
+  details.notes summary{cursor:pointer;font-weight:700;color:var(--ink);padding:4px 0}
+  details.notes h3{font-size:13px;margin:14px 0 4px;letter-spacing:.02em}
+  details.notes ul{margin:0;padding-left:18px;color:var(--muted)}
+  details.notes li{margin:3px 0}
+  details.notes .src{font-weight:600;color:var(--ink)}
+
+  @media (max-width:960px){
+    .main{grid-template-columns:1fr}
+    .ctrl-grid{grid-template-columns:1fr}
+    .refbox{margin-left:0;width:100%}
+  }
+  @media (prefers-reduced-motion:no-preference){
+    .bar{transition:width .18s ease,x .18s ease}
+    .card .mini b{transition:width .18s ease}
+  }
+</style>
 </head>
-<body class="text-slate-800 antialiased min-h-screen flex flex-col justify-between">
+<body>
+<div class="wrap">
 
-    <!-- Header -->
-    <header class="bg-indigo-700 text-white shadow-lg py-5 px-4 sm:px-8">
-        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
-            <div>
-                <div class="flex items-center gap-2 text-indigo-200 text-xs font-semibold tracking-wider uppercase">
-                    <span class="bg-indigo-600 px-2 py-0.5 rounded-md border border-indigo-400">중학교 사회 3학년</span>
-                    <span>2단원: 인구 변화와 인구 문제</span>
-                </div>
-                <h1 class="text-2xl sm:text-3xl font-extrabold mt-1 tracking-tight">
-                    📊 인구 피라미드 변화 시뮬레이터
-                </h1>
-            </div>
-            <div class="text-right text-xs text-indigo-200 bg-indigo-800/60 backdrop-blur px-3 py-2 rounded-lg border border-indigo-500/30">
-                <span>💡 실시간 조건 조절 및 인구구조 분석 수업도구</span>
-            </div>
-        </div>
-    </header>
+  <p class="eyebrow">중학교 3학년 사회 · 인구 변화와 인구 구조</p>
+  <h1>인구 피라미드 시뮬레이터</h1>
+  <p class="lede">
+    출산율과 기대수명 두 가지만 바꿔 보세요. 이 값이 오랫동안 그대로 유지된다면
+    인구 구조가 결국 어떤 모양에 도달하는지 보여 줍니다.
+  </p>
+  <div class="rule"></div>
 
-    <!-- Main Content Container -->
-    <main class="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 flex-grow space-y-6">
+  <!-- 조작판 -->
+  <section class="controls" aria-label="조건 설정">
+    <div class="ctrl-grid">
+      <div class="field">
+        <label for="tfr">
+          <span class="nm">합계출산율</span>
+          <span class="val"><span id="tfrVal">0.80</span><span class="unit">명</span></span>
+        </label>
+        <input type="range" id="tfr" min="0.4" max="5" step="0.01" value="0.8"
+               aria-describedby="tfrDesc">
+        <div class="scale"><span>0.4</span><span>여자 1명이 평생 낳는 아이 수</span><span>5.0</span></div>
+        <p id="tfrDesc" hidden>여자 한 명이 평생 낳을 것으로 기대되는 평균 자녀 수입니다.</p>
+      </div>
+      <div class="field">
+        <label for="le">
+          <span class="nm">기대수명</span>
+          <span class="val"><span id="leVal">83.7</span><span class="unit">세</span></span>
+        </label>
+        <input type="range" id="le" min="45" max="92" step="0.1" value="83.7">
+        <div class="scale"><span>45</span><span>태어난 아이가 평균적으로 사는 햇수</span><span>92</span></div>
+      </div>
+    </div>
 
-        <!-- Top Instructions & Preset Buttons -->
-        <section class="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
-                        <span>🎯 대표적인 인구 피라미드 유형 프리셋</span>
-                    </h2>
-                    <p class="text-sm text-slate-600 mt-1">
-                        버튼을 클릭하여 주요 시대별·국가별 인구 구조 패턴을 빠르게 불러올 수 있습니다.
-                    </p>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    <button onclick="applyPreset('pyramid')" class="px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-medium text-xs sm:text-sm border border-emerald-200 transition">
-                        🔺 피라미드형 (다출산·다사)
-                    </button>
-                    <button onclick="applyPreset('bell')" class="px-3 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium text-xs sm:text-sm border border-blue-200 transition">
-                        🔔 종형 (정출산·정사)
-                    </button>
-                    <button onclick="applyPreset('pot')" class="px-3 py-2 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 font-medium text-xs sm:text-sm border border-rose-200 transition">
-                        🏺 항아리형 (저출산·초고령)
-                    </button>
-                    <button onclick="applyPreset('korea2026')" class="px-3 py-2 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-medium text-xs sm:text-sm border border-indigo-200 transition">
-                        🇰🇷 대한민국 현재 (초저출산)
-                    </button>
-                </div>
-            </div>
-        </section>
+    <div class="presets">
+      <span class="tag">불러오기</span>
+      <button class="chip" data-tfr="0.80" data-le="83.7">한국 2025</button>
+      <button class="chip" data-tfr="4.53" data-le="62.3">한국 1970</button>
+      <button class="chip" data-tfr="2.11" data-le="83.7">인구가 유지되는 수준</button>
+      <button class="chip" data-tfr="2.25" data-le="73.3">세계 평균</button>
+      <div class="refbox">
+        <label for="ref">비교선</label>
+        <select id="ref">
+          <option value="none">없음</option>
+          <option value="0.80|83.7">한국 2025</option>
+          <option value="4.53|62.3" selected>한국 1970</option>
+          <option value="2.11|83.7">인구가 유지되는 수준</option>
+        </select>
+      </div>
+    </div>
+  </section>
 
-        <!-- Dynamic Grid: Sliders & Stats on Left, Chart on Right -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+  <!-- 본체 -->
+  <div class="main">
+    <section class="panel" aria-label="인구 피라미드">
+      <h2>인구 피라미드</h2>
+      <svg class="pyramid" id="svg" viewBox="0 0 880 572" role="img"
+           aria-labelledby="svgTitle"><title id="svgTitle">설정한 조건에서의 연령·성별 인구 구성 그래프</title></svg>
+      <div class="legend">
+        <span><i style="background:var(--male)"></i>남자</span>
+        <span><i style="background:var(--female)"></i>여자</span>
+        <span><i style="background:var(--edge-y)"></i>유소년 0–14세</span>
+        <span><i style="background:var(--edge-w)"></i>생산연령 15–64세</span>
+        <span><i style="background:var(--edge-o)"></i>노년 65세 이상</span>
+        <span id="refLeg" style="display:none">┈ 비교선</span>
+      </div>
+    </section>
 
-            <!-- Controls & Key Indicators (4 cols on lg) -->
-            <div class="lg:col-span-5 space-y-6 flex flex-col justify-between">
-                
-                <!-- Slider Controls Card -->
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
-                    <h2 class="text-lg font-bold text-slate-900 border-b pb-3 border-slate-100 flex items-center justify-between">
-                        <span>🎛️ 인구 변수 조절</span>
-                        <span class="text-xs font-normal text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">실시간 반영</span>
-                    </h2>
+    <section class="panel" aria-label="인구 구성 비율" aria-live="polite">
+      <h2>인구 구성 비율</h2>
 
-                    <!-- TFR Slider -->
-                    <div class="space-y-2">
-                        <div class="flex justify-between items-center">
-                            <label for="tfrSlider" class="font-semibold text-slate-700 text-sm flex items-center gap-1.5">
-                                <span>👶 합계출산율 (TFR)</span>
-                            </label>
-                            <span class="text-lg font-extrabold text-indigo-600 font-mono" id="tfrValue">1.20 명</span>
-                        </div>
-                        <input type="range" id="tfrSlider" min="0.5" max="6.0" step="0.05" value="1.2"
-                            class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer custom-slider"
-                            oninput="updateSimulation()">
-                        <div class="flex justify-between text-xs text-slate-400 font-medium">
-                            <span>0.5명 (초저출산)</span>
-                            <span>2.1명 (대체수준)</span>
-                            <span>6.0명 (고출산)</span>
-                        </div>
-                    </div>
+      <div class="card" id="cYouth">
+        <div class="lab">유소년 인구<span class="rng">0–14세</span></div>
+        <div class="pct"><span id="pYouth">0.0</span><span>%</span></div>
+        <div class="mini"><b id="bYouth"></b></div>
+      </div>
+      <div class="card" id="cWork">
+        <div class="lab">생산연령 인구<span class="rng">15–64세</span></div>
+        <div class="pct"><span id="pWork">0.0</span><span>%</span></div>
+        <div class="mini"><b id="bWork"></b></div>
+      </div>
+      <div class="card" id="cOld">
+        <div class="lab">노년 인구<span class="rng">65세 이상</span></div>
+        <div class="pct"><span id="pOld">0.0</span><span>%</span></div>
+        <div class="mini"><b id="bOld"></b></div>
+      </div>
 
-                    <!-- Life Expectancy Slider -->
-                    <div class="space-y-2">
-                        <div class="flex justify-between items-center">
-                            <label for="lifeSlider" class="font-semibold text-slate-700 text-sm flex items-center gap-1.5">
-                                <span>🏥 평균 기대수명</span>
-                            </label>
-                            <span class="text-lg font-extrabold text-indigo-600 font-mono" id="lifeValue">83 세</span>
-                        </div>
-                        <input type="range" id="lifeSlider" min="50" max="95" step="1" value="83"
-                            class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer custom-slider"
-                            oninput="updateSimulation()">
-                        <div class="flex justify-between text-xs text-slate-400 font-medium">
-                            <span>50세 (과거/개발도상국)</span>
-                            <span>75세</span>
-                            <span>95세 (초장수사회)</span>
-                        </div>
-                    </div>
+      <table class="stats">
+        <tbody>
+          <tr><th scope="row">총부양비</th><td><span id="sDep">0</span> 명</td></tr>
+          <tr><th scope="row">노년부양비</th><td><span id="sOdep">0</span> 명</td></tr>
+          <tr><th scope="row">노령화지수</th><td><span id="sAgeIdx">0</span></td></tr>
+          <tr><th scope="row">인구 증가율</th><td><span id="sGrow">0</span> %/년</td></tr>
+          <tr><th scope="row">100년 뒤 인구</th><td><span id="sFut">0</span> 배</td></tr>
+          <tr><th scope="row">기대수명 남 / 여</th><td><span id="sSex">0 / 0</span> 세</td></tr>
+        </tbody>
+      </table>
 
-                    <!-- Summary Info Box -->
-                    <div class="p-3.5 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-600 leading-relaxed">
-                        📌 <strong class="text-slate-800">합계출산율:</strong> 여성 1명이 평생 낳을 것으로 기대되는 평균 출생아 수.<br>
-                        📌 <strong class="text-slate-800">기대수명:</strong> 0세 출생아가 앞으로 살 것으로 기대되는 평균 연령.
-                    </div>
-                </div>
+      <div class="typebox">
+        <div class="k">인구 구조 유형</div>
+        <div class="v" id="sType">—</div>
+        <div class="why" id="sWhy">—</div>
+      </div>
+    </section>
+  </div>
 
-                <!-- Demographic Proportions Cards -->
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
-                    <h2 class="text-lg font-bold text-slate-900 border-b pb-3 border-slate-100 flex items-center justify-between">
-                        <span>📈 연령별 인구 구성비 및 지표</span>
-                    </h2>
+  <!-- 질문 -->
+  <section class="qbox">
+    <h2>생각해볼 질문</h2>
+    <div class="q">
+      <div class="n">1</div>
+      <div>
+        <p><strong>출산율만 낮출 때</strong>와 <strong>기대수명만 늘릴 때</strong>, 노년 인구 비율을 더 크게 바꾸는 것은 어느 쪽일까?
+           한 번에 한 가지만 움직이며 확인하고, 그렇게 되는 까닭을 설명해 보자.</p>
+        <p class="hint">힌트 — 노년 인구 비율은 ‘노인이 몇 명인가’가 아니라 ‘전체 중 몇 %인가’로 정해진다. 분모가 되는 아이 수는 무엇이 정할까?</p>
+      </div>
+    </div>
+    <div class="q">
+      <div class="n">2</div>
+      <div>
+        <p>‘한국 2025’를 눌러 보면 노년 인구가 약 <strong>59%</strong>로 나온다. 그러나 2025년 인구주택총조사에서 실제 65세 이상 인구는 약 <strong>20.7%</strong>였다.
+           같은 출산율과 기대수명을 넣었는데 왜 이렇게 다를까?</p>
+        <p class="hint">힌트 — 이 시뮬레이터는 “지금의 출산율·기대수명이 <em>아주 오랫동안 그대로 이어졌다면</em>”을 계산한다. 지금 한국의 60대는 어느 시대에 태어난 사람들일까?</p>
+      </div>
+    </div>
+  </section>
 
-                    <div class="grid grid-cols-3 gap-3 text-center">
-                        <!-- Youth (0-14) -->
-                        <div class="p-3 rounded-xl bg-sky-50 border border-sky-100 flex flex-col justify-between">
-                            <span class="text-xs font-semibold text-sky-700 block">유소년 인구<br>(0~14세)</span>
-                            <span id="youthRatio" class="text-xl font-extrabold text-sky-900 my-1 font-mono">12.5%</span>
-                            <span class="text-[10px] text-sky-600">미래 노동력</span>
-                        </div>
+  <details class="notes">
+    <summary>이 시뮬레이터가 쓴 자료와 계산 방법 (수업 전 확인용)</summary>
 
-                        <!-- Working Age (15-64) -->
-                        <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-100 flex flex-col justify-between">
-                            <span class="text-xs font-semibold text-emerald-700 block">생산연령 인구<br>(15~64세)</span>
-                            <span id="workingRatio" class="text-xl font-extrabold text-emerald-900 my-1 font-mono">68.2%</span>
-                            <span class="text-[10px] text-emerald-600">경제 활동 주체</span>
-                        </div>
+    <h3>1. 실제 통계에서 가져온 값 — 출처 있는 자료</h3>
+    <ul>
+      <li>합계출산율: 2025년 <span class="src">0.80명</span>(잠정), 2024년 0.75명, 2023년 0.72명 — 국가데이터처 「2025년 출생·사망통계(잠정)」, 2026.2.25.</li>
+      <li>합계출산율: 1970년 <span class="src">4.53명</span> — 통계청 인구동향조사.</li>
+      <li>기대수명: 2024년 <span class="src">83.7년</span>(남 80.8 / 여 86.6) — 국가데이터처 「2024년 생명표」, 2025.12.3. ※ 2025년 생명표는 아직 발표 전이라 2024년 값을 씁니다.</li>
+      <li>기대수명: 1970년 <span class="src">62.3년</span> — 통계청 생명표.</li>
+      <li>2025년 실제 연령 구성: 유소년 약 10.1% / 생산연령 <span class="src">69.2%</span> / 노년 <span class="src">20.7%</span>, 노령화지수 205.2 — 국가데이터처 「2025년 인구주택총조사」, 2026.7.28.</li>
+      <li>세계 평균(출산율 2.25명·기대수명 73.3년)은 UN 세계인구전망 계열의 참고값이며, 위 국내 통계보다 정확도가 낮은 개략치입니다.</li>
+    </ul>
 
-                        <!-- Elderly (65+) -->
-                        <div class="p-3 rounded-xl bg-amber-50 border border-amber-100 flex flex-col justify-between">
-                            <span class="text-xs font-semibold text-amber-700 block">노년 인구<br>(65세 이상)</span>
-                            <span id="elderlyRatio" class="text-xl font-extrabold text-amber-900 my-1 font-mono">19.3%</span>
-                            <span class="text-[10px] text-amber-600">부양 대상 노인</span>
-                        </div>
-                    </div>
+    <h3>2. 계산에 쓴 가정 — 자료가 아니라 모형입니다</h3>
+    <ul>
+      <li><span class="src">안정인구(stable population) 모형</span>: 지금의 출산율과 사망률이 아주 오랫동안 변하지 않고 이어질 때 도달하는 연령 구성을 로트카(Lotka) 방정식으로 구합니다. <strong>현재의 실제 인구 구조가 아닙니다.</strong></li>
+      <li>사망률은 영유아기·노년기 형태를 함께 가진 실러(Siler)형 곡선을 쓰고, 곡선 전체의 높이를 조절해 슬라이더의 기대수명에 맞춥니다.</li>
+      <li>남녀 사망률 차이는 고정 배율(남 1.22 / 여 0.84)로 두었습니다. 이 배율은 2024년(남 80.8 / 여 86.6)과 1970년(남 58.7 / 여 65.8)의 실제 남녀 기대수명을 거의 그대로 재현하도록 맞춘 값입니다.</li>
+      <li>출산 연령 분포는 평균 32.5세·표준편차 5.2년의 정규분포(15~49세)로 가정했습니다. 실제 한국의 연령별 출산율 정점이 30대 초반인 점을 참고한 값이며, 나라·시대에 따라 달라집니다.</li>
+      <li>출생성비 105(남 105 : 여 100)로 두고, <strong>국제 이동(이민·이주)은 0으로 가정</strong>합니다. 실제 인구 변화에서 이동은 중요한 요인입니다.</li>
+      <li>인구 구조 유형 판정 기준(이 시뮬레이터가 정한 규칙): 유소년이 30% 이상이거나 인구 증가율이 +0.5%/년보다 크면 <strong>피라미드형</strong>, 증가율이 −0.5 ~ +0.5%/년이면 <strong>종형</strong>, −0.5%/년보다 작으면 <strong>방추형</strong>. 교과서의 세 유형은 그림으로 설명되는 개념이라 정해진 수치 기준이 없어, 이 시뮬레이터에서는 ‘인구가 느는가·정체인가·주는가’를 기준으로 삼았습니다.</li>
+    </ul>
+    <p style="color:var(--muted);margin:10px 0 4px">
+      요약하면 — 슬라이더에 넣는 <strong>출산율·기대수명 값과 실제 연령 구성 통계는 출처가 있는 자료</strong>이고,
+      그림으로 그려지는 <strong>피라미드 모양은 위 가정 위에서 계산한 모형의 결과</strong>입니다.
+    </p>
+  </details>
 
-                    <!-- Extended Social Indicators -->
-                    <div class="pt-2 grid grid-cols-2 gap-3 text-xs">
-                        <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-200 flex justify-between items-center">
-                            <span class="text-slate-600 font-medium">총부양비</span>
-                            <span id="totalDependency" class="font-bold text-slate-800 font-mono">46.6</span>
-                        </div>
-                        <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-200 flex justify-between items-center">
-                            <span class="text-slate-600 font-medium">노령화지수</span>
-                            <span id="agingIndex" class="font-bold text-slate-800 font-mono">154.4</span>
-                        </div>
-                    </div>
+</div>
 
-                    <!-- Society Type Badge -->
-                    <div class="p-3 rounded-lg border text-center font-bold text-sm transition-all" id="societyTypeBadge">
-                        고령화 사회 단계 판단 중...
-                    </div>
-                </div>
+<script>
+"use strict";
+/* ========== 1. 인구학 계산부 ========================================= */
+const H = 0.5, XMAX = 111, N = Math.round(XMAX / H) + 1;
+const MUL_M = 1.22, MUL_F = 0.84;              // 남녀 사망률 배율
+const pM = 1.05 / 2.05, pF = 1 / 2.05;         // 출생성비 105
 
-            </div>
+// 실러(Siler)형 기준 사망력: 영유아 감소항 + 상수항 + 노년 증가항
+const HZ = new Float64Array(N);
+for (let i = 0; i < N; i++) {
+  const x = i * H;
+  HZ[i] = 0.08 * Math.exp(-x) + 0.0006 + 2.5e-5 * Math.exp(0.0925 * x);
+}
 
-            <!-- Population Pyramid Visualizer Chart (7 cols on lg) -->
-            <div class="lg:col-span-7 bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
-                <div>
-                    <div class="flex justify-between items-start mb-4">
-                        <div>
-                            <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
-                                <span>🏛️ 인구 피라미드 그래프</span>
-                            </h2>
-                            <p class="text-xs text-slate-500 mt-1">
-                                좌측: 남성 인구(%) | 우측: 여성 인구(%) [5세 단위 코호트]
-                            </p>
-                        </div>
-                        <div class="flex items-center gap-4 text-xs font-semibold">
-                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-blue-500 inline-block"></span> 남성</span>
-                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-rose-500 inline-block"></span> 여성</span>
-                        </div>
-                    </div>
+function lifeTable(k, mul) {
+  const l = new Float64Array(N);
+  l[0] = 1;
+  let cum = 0;
+  const c = k * mul;
+  for (let i = 1; i < N; i++) {
+    cum += (c * HZ[i - 1] + c * HZ[i]) / 2 * H;
+    l[i] = Math.exp(-cum);
+  }
+  let e0 = 0;
+  for (let i = 0; i < N - 1; i++) e0 += (l[i] + l[i + 1]) / 2 * H;
+  return { l, e0 };
+}
 
-                    <!-- Chart Canvas Box -->
-                    <div class="relative w-full h-[400px] sm:h-[450px]">
-                        <canvas id="pyramidChart"></canvas>
-                    </div>
-                </div>
+// 기대수명 목표값에 맞는 사망률 배율 k를 이분법으로 찾음
+function solveK(target) {
+  let lo = 0.02, hi = 30;
+  for (let it = 0; it < 60; it++) {
+    const k = Math.sqrt(lo * hi);
+    const e = pM * lifeTable(k, MUL_M).e0 + pF * lifeTable(k, MUL_F).e0;
+    if (e > target) lo = k; else hi = k;
+  }
+  return Math.sqrt(lo * hi);
+}
 
-                <!-- Chart Footer Explanation -->
-                <div class="mt-4 pt-3 border-t border-slate-100 flex flex-wrap justify-between text-xs text-slate-500">
-                    <span>💡 형태 특징: <strong id="shapeName" class="text-indigo-600">항아리형 (기반 감축형)</strong></span>
-                    <span>X축: 해당 연령대의 전체 인구 대비 비율 (%)</span>
-                </div>
-            </div>
+// 출산 연령 분포(평균 32.5세, 표준편차 5.2년, 15~49세)
+const FW = new Float64Array(N);
+(function () {
+  let s = 0;
+  for (let i = 0; i < N; i++) {
+    const a = i * H;
+    if (a >= 15 && a <= 49) {
+      FW[i] = Math.exp(-0.5 * Math.pow((a - 32.5) / 5.2, 2));
+      s += FW[i] * H;
+    }
+  }
+  for (let i = 0; i < N; i++) FW[i] /= s;   // 적분값 1로 정규화
+})();
 
-        </div>
+function compute(tfr, e0target) {
+  const k = solveK(e0target);
+  const LM = lifeTable(k, MUL_M), LF = lifeTable(k, MUL_F);
 
-        <!-- Middle School Social Studies Concept Summary Card -->
-        <section class="bg-indigo-900 text-white rounded-xl p-6 shadow-md">
-            <h2 class="text-lg font-bold text-indigo-100 mb-3 flex items-center gap-2">
-                <span>📚 교과서 주요 개념 알아보기 (중3 사회 - 인구 구조의 유형)</span>
-            </h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm leading-relaxed">
-                <div class="bg-indigo-800/70 p-4 rounded-lg border border-indigo-700/50">
-                    <h3 class="font-bold text-emerald-300 text-base mb-1">🔺 피라미드형 (기반 확대형)</h3>
-                    <p class="text-indigo-100">
-                        출산율이 높고 기대수명이 짧은 개발도상국 형태입니다. 유소년 인구 비율이 매우 높고 연령이 높아질수록 인구가 급격히 감소합니다.
-                    </p>
-                </div>
-                <div class="bg-indigo-800/70 p-4 rounded-lg border border-indigo-700/50">
-                    <h3 class="font-bold text-blue-300 text-base mb-1">🔔 종형 (정체형)</h3>
-                    <p class="text-indigo-100">
-                        출산율과 사망률이 모두 낮아 인구가 stable(정체)한 선진국 형태입니다. 유소년 인구와 생산연령 인구 비율이 균형을 이룹니다.
-                    </p>
-                </div>
-                <div class="bg-indigo-800/70 p-4 rounded-lg border border-indigo-700/50">
-                    <h3 class="font-bold text-rose-300 text-base mb-1">🏺 항아리형 (기반 감축형)</h3>
-                    <p class="text-indigo-100">
-                        초저출산과 고령화가 지속되는 형태입니다. 유소년층 폭이 매우 좁고, 노년층 비율이 높아 인구 감소 및 고령화 문제가 심각해집니다.
-                    </p>
-                </div>
-            </div>
-        </section>
+  // 로트카 방정식: ∫ e^(-ra)·l_f(a)·m(a)·(여아 비율) da = 1 을 만족하는 r
+  const net = (r) => {
+    let s = 0;
+    for (let i = 0; i < N; i++) {
+      if (FW[i] === 0) continue;
+      s += Math.exp(-r * i * H) * LF.l[i] * FW[i] * tfr * pF * H;
+    }
+    return s;
+  };
+  let lo = -0.25, hi = 0.25;
+  for (let it = 0; it < 120; it++) {
+    const r = (lo + hi) / 2;
+    if (net(r) > 1) lo = r; else hi = r;
+  }
+  const r = (lo + hi) / 2;
 
-        <!-- Discussion Questions Section (2 Required Questions) -->
-        <section class="bg-white rounded-xl p-6 shadow-sm border border-slate-200 space-y-6">
-            <div class="border-b pb-3 border-slate-100">
-                <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
-                    <span>🤔 수업 시간에 함께 생각해볼 질문</span>
-                </h2>
-                <p class="text-xs text-slate-500 mt-1">시뮬레이터를 직접 조작해보고 아래 질문에 대해 친구들과 토론해 봅시다.</p>
-            </div>
+  // 안정인구의 연령별 밀도
+  const dm = new Float64Array(N), df = new Float64Array(N);
+  let tot = 0;
+  for (let i = 0; i < N; i++) {
+    const w = Math.exp(-r * i * H);
+    dm[i] = pM * w * LM.l[i];
+    df[i] = pF * w * LF.l[i];
+  }
+  for (let i = 0; i < N - 1; i++)
+    tot += ((dm[i] + df[i]) + (dm[i + 1] + df[i + 1])) / 2 * H;
 
-            <div class="space-y-4">
-                <!-- Question 1 -->
-                <div class="p-5 rounded-xl bg-slate-50 border border-slate-200 hover:border-indigo-300 transition">
-                    <div class="flex items-start gap-3">
-                        <span class="flex-shrink-0 w-7 h-7 bg-indigo-600 text-white font-bold rounded-full flex items-center justify-center text-sm">
-                            Q1
-                        </span>
-                        <div class="space-y-2 flex-grow">
-                            <h3 class="font-bold text-slate-900 text-base">
-                                출산율이 낮아지고 기대수명이 길어지면 생산연령인구(15~64세)가 부담해야 하는 경제적·사회적 변화는 무엇일까요?
-                            </h3>
-                            <p class="text-xs sm:text-sm text-slate-600">
-                                <span class="font-semibold text-indigo-600">힌트:</span> 유소년부양비와 노년부양비, 총부양비 수치의 변화를 살펴보며 노인 복지 비용, 세금 부담, 경제 활력 관점에서 생각해보세요.
-                            </p>
-                            <details class="mt-2 text-xs text-slate-500">
-                                <summary class="cursor-pointer font-medium text-indigo-600 hover:underline">예시 답안 보기 / 교사용 가이드</summary>
-                                <div class="mt-2 p-3 bg-white rounded border border-slate-200 text-slate-700 space-y-1">
-                                    <p>• 유소년부양비는 감소하지만 노년부양비가 급격히 증가하여 전체적인 <strong>총부양비 부담이 커집니다.</strong></p>
-                                    <p>• 일하는 생산연령인구 한 명이 부양해야 하는 노인 수가 늘어나 세금 및 사회보험료(연금, 건강보험) 부담이 가중됩니다.</p>
-                                    <p>• 노동력 부족으로 경제 성장률이 둔화될 수 있으며, 노인 의료 및 복지 지출이 크게 증가합니다.</p>
-                                </div>
-                            </details>
-                        </div>
-                    </div>
-                </div>
+  // 5세 계급으로 묶기 (마지막 계급은 100세 이상)
+  const groups = [];
+  for (let g = 0; g < 21; g++) {
+    const i0 = Math.round(g * 5 / H);
+    const i1 = (g === 20 ? N - 1 : Math.round((g * 5 + 5) / H));
+    let m = 0, f = 0;
+    for (let i = i0; i < i1; i++) {          // 합계(tot)와 같은 사다리꼴 적분
+      m += (dm[i] + dm[i + 1]) / 2 * H;
+      f += (df[i] + df[i + 1]) / 2 * H;
+    }
+    groups.push([m / tot * 100, f / tot * 100]);
+  }
+  const sum = (from, to) => {
+    let s = 0;
+    for (let g = from; g < to; g++) s += groups[g][0] + groups[g][1];
+    return s;
+  };
+  return {
+    groups, r,
+    youth: sum(0, 3), work: sum(3, 13), old: sum(13, 21),
+    e0m: LM.e0, e0f: LF.e0
+  };
+}
 
-                <!-- Question 2 -->
-                <div class="p-5 rounded-xl bg-slate-50 border border-slate-200 hover:border-indigo-300 transition">
-                    <div class="flex items-start gap-3">
-                        <span class="flex-shrink-0 w-7 h-7 bg-indigo-600 text-white font-bold rounded-full flex items-center justify-center text-sm">
-                            Q2
-                        </span>
-                        <div class="space-y-2 flex-grow">
-                            <h3 class="font-bold text-slate-900 text-base">
-                                인구 피라미드가 '항아리형'으로 변화하는 인구 문제(저출산·고령화)를 해결하기 위해 사회 각 차원(정부, 기업, 개인)에서 할 수 있는 노력은 무엇이 있을까요?
-                            </h3>
-                            <p class="text-xs sm:text-sm text-slate-600">
-                                <span class="font-semibold text-indigo-600">힌트:</span> 출산 및 육아 환경 개선, 일·가정 양립, 고령자 일자리 정책 등을 나누어 제시해 보세요.
-                            </p>
-                            <details class="mt-2 text-xs text-slate-500">
-                                <summary class="cursor-pointer font-medium text-indigo-600 hover:underline">예시 답안 보기 / 교사용 가이드</summary>
-                                <div class="mt-2 p-3 bg-white rounded border border-slate-200 text-slate-700 space-y-1">
-                                    <p>• <strong>정부 차원:</strong> 양육비 지원 확대, 국공립 어린이집 확충, 신혼부부 주거 지원, 정년 연장 및 노인 재취업 교육 체계 마련.</p>
-                                    <p>• <strong>기업 차원:</strong> 육아휴직 자유로운 사용 보장, 유연근무제 도입, 남성 육아휴직 활성화 등 가족 친화적 일터 조성.</p>
-                                    <p>• <strong>개인/사회적 차원:</strong> 양성평등한 가사·육아 분담 문화 정착, 고령자에 대한 사회적 존중 및 세대 간 상생 태도 함양.</p>
-                                </div>
-                            </details>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
+/* ========== 2. 그림 그리기 ========================================== */
+const SVG_NS = "http://www.w3.org/2000/svg";
+const C = {                      // CSS 변수와 같은 값 (SVG 속성용 리터럴)
+  ink:"#131C24", muted:"#61707C", line:"#C9D2D8",
+  male:"#24607F", female:"#B24466",
+  washY:"#FBF0DA", edgeY:"#C08018",
+  washW:"#E5EFE7", edgeW:"#3F7D52",
+  washO:"#ECE7F3", edgeO:"#6E56A8"
+};
+const VW = 880, VH = 572;
+const GUT = 30, PAD = 34, CX = 440, LABW = 78;
+const XL = CX - LABW / 2, XR = CX + LABW / 2;   // 가운데 나이 칸
+const PLOT = XL - PAD;                          // 한쪽 막대 최대 길이
+const TOP = 34, BOT = 514, ROWH = (BOT - TOP) / 21;
 
-    </main>
+const svg = document.getElementById("svg");
+const AGE_LABEL = (g) => (g === 20 ? "100+" : `${g * 5}–${g * 5 + 4}`);
 
-    <!-- Footer -->
-    <footer class="bg-slate-900 text-slate-400 py-6 text-center text-xs mt-8">
-        <p>중학교 사회 3학년 수업용 인구 피라미드 대화형 시뮬레이터</p>
-        <p class="mt-1 text-slate-500">본 시뮬레이터는 합계출산율과 기대수명에 따른 코호트 사망·생존율 수리 모델을 기반으로 계산됩니다.</p>
-    </footer>
+function el(tag, attrs, text) {
+  const n = document.createElementNS(SVG_NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (text != null) n.textContent = text;
+  return n;
+}
+function rowY(g) { return BOT - (g + 1) * ROWH; }   // 아래가 0–4세
 
-    <!-- JavaScript Logic -->
-    <script>
-        // Age group labels (5-year cohorts from 0-4 to 90+)
-        const ageLabels = [
-            '0-4세', '5-9세', '10-14세', '15-19세', '20-24세',
-            '25-29세', '30-34세', '35-39세', '40-44세', '45-49세',
-            '50-54세', '55-59세', '60-64세', '65-69세', '70-74세',
-            '75-79세', '80-84세', '85-89세', '90세 이상'
-        ];
+function niceMax(v) {
+  const steps = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 7, 8, 10, 12, 15];
+  for (const s of steps) if (v <= s) return s;
+  return Math.ceil(v);
+}
 
-        let pyramidChart = null;
+function buildFrame(maxPct) {
+  svg.replaceChildren();
+  svg.appendChild(el("title", {}, "설정한 조건에서의 연령·성별 인구 구성 그래프"));
 
-        // Initialize Chart.js Population Pyramid
-        function initChart() {
-            const ctx = document.getElementById('pyramidChart').getContext('2d');
-            
-            pyramidChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ageLabels,
-                    datasets: [
-                        {
-                            label: '남성 인구 (%)',
-                            data: [],
-                            backgroundColor: 'rgba(59, 130, 246, 0.85)',
-                            borderColor: 'rgba(37, 99, 235, 1)',
-                            borderWidth: 1,
-                            borderRadius: 4,
-                            barPercentage: 0.9,
-                            categoryPercentage: 0.9
-                        },
-                        {
-                            label: '여성 인구 (%)',
-                            data: [],
-                            backgroundColor: 'rgba(244, 63, 94, 0.85)',
-                            borderColor: 'rgba(225, 29, 72, 1)',
-                            borderWidth: 1,
-                            borderRadius: 4,
-                            barPercentage: 0.9,
-                            categoryPercentage: 0.9
-                        }
-                    ]
-                },
-                options: {
-                    indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: {
-                        duration: 350
-                    },
-                    scales: {
-                        x: {
-                            stacked: false,
-                            grid: {
-                                color: 'rgba(226, 232, 240, 0.8)'
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return Math.abs(value).toFixed(1) + '%';
-                                },
-                                font: {
-                                    size: 11,
-                                    family: 'Noto Sans KR'
-                                }
-                            },
-                            title: {
-                                display: true,
-                                text: '◄ 남성 인구 비율 (%) | 여성 인구 비율 (%) ►',
-                                font: { size: 12, weight: 'bold' }
-                            }
-                        },
-                        y: {
-                            stacked: false,
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                font: {
-                                    size: 10,
-                                    family: 'Noto Sans KR'
-                                }
-                            }
-                        }
-                    },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const value = Math.abs(context.raw).toFixed(2);
-                                    return `${context.dataset.label}: ${value}%`;
-                                }
-                            }
-                        },
-                        legend: {
-                            display: false
-                        }
-                    }
-                }
-            });
-        }
+  // 연령 구간 띠
+  const bands = [
+    { g0: 0,  g1: 3,  fill: C.washY, edge: C.edgeY, t: "유소년" },
+    { g0: 3,  g1: 13, fill: C.washW, edge: C.edgeW, t: "생산연령" },
+    { g0: 13, g1: 21, fill: C.washO, edge: C.edgeO, t: "노년" }
+  ];
+  for (const b of bands) {
+    const y = rowY(b.g1 - 1), h = (b.g1 - b.g0) * ROWH;
+    svg.appendChild(el("rect", { x: PAD - 6, y, width: VW - 2 * (PAD - 6), height: h, fill: b.fill }));
+    svg.appendChild(el("rect", { x: 4, y, width: 5, height: h, fill: b.edge, rx: 2.5 }));
+    const lx = 21, ly = y + h / 2;
+    const tx = el("text", {
+      x: lx, y: ly, fill: b.edge, "font-size": 13, "font-weight": 700,
+      "text-anchor": "middle", transform: `rotate(-90 ${lx} ${ly})`
+    }, b.t);
+    svg.appendChild(tx);
+  }
 
-        // Mathematical Simulation Model to generate Population Pyramid Cohorts
-        function calculatePopulationData(tfr, lifeExp) {
-            const maleData = [];
-            const femaleData = [];
-            let totalPop = 0;
+  // 눈금선
+  const step = maxPct <= 3 ? 0.5 : (maxPct <= 6 ? 1 : 2);
+  for (let v = step; v <= maxPct + 1e-9; v += step) {
+    const w = v / maxPct * PLOT;
+    for (const s of [-1, 1]) {
+      const x = s < 0 ? XL - w : XR + w;
+      svg.appendChild(el("line", { x1: x, y1: TOP, x2: x, y2: BOT, stroke: C.line, "stroke-width": 1 }));
+      svg.appendChild(el("text", {
+        x, y: BOT + 18, fill: C.muted, "font-size": 11, "text-anchor": "middle"
+      }, v.toFixed(step < 1 ? 1 : 0)));
+    }
+  }
+  svg.appendChild(el("text", { x: CX, y: BOT + 18, fill: C.muted, "font-size": 11, "text-anchor": "middle" }, "0"));
+  svg.appendChild(el("text", { x: CX, y: BOT + 38, fill: C.muted, "font-size": 12, "text-anchor": "middle" },
+    "전체 인구에서 차지하는 비율 (%)"));
 
-            const rawMale = [];
-            const rawFemale = [];
+  // 머리글
+  svg.appendChild(el("text", { x: XL - PLOT / 2, y: 22, fill: C.male, "font-size": 15, "font-weight": 700, "text-anchor": "middle" }, "남자"));
+  svg.appendChild(el("text", { x: XR + PLOT / 2, y: 22, fill: C.female, "font-size": 15, "font-weight": 700, "text-anchor": "middle" }, "여자"));
+  svg.appendChild(el("text", { x: CX, y: 22, fill: C.muted, "font-size": 12, "font-weight": 700, "text-anchor": "middle" }, "나이"));
 
-            // Cohort calculation loop (19 age groups)
-            for (let i = 0; i < ageLabels.length; i++) {
-                const midAge = i * 5 + 2.5;
+  // 나이 칸 + 막대
+  const bars = [];
+  for (let g = 0; g < 21; g++) {
+    const y = rowY(g), bh = Math.max(9, ROWH - 5.5);
+    const by = y + (ROWH - bh) / 2;
+    svg.appendChild(el("text", {
+      class: "mono", x: CX, y: by + bh / 2 + 4, fill: C.ink,
+      "font-size": 11, "text-anchor": "middle"
+    }, AGE_LABEL(g)));
+    const m = el("rect", { class: "bar", x: XL, y: by, width: 0, height: bh, fill: C.male, rx: 1.5 });
+    const f = el("rect", { class: "bar", x: XR, y: by, width: 0, height: bh, fill: C.female, rx: 1.5 });
+    svg.appendChild(m); svg.appendChild(f);
+    bars.push([m, f]);
+  }
 
-                // 1. Survival probability S(a) based on Life Expectancy using logistic curve
-                const k = 7.0; // slope factor
-                const survival = 1 / (1 + Math.exp((midAge - lifeExp) / k));
+  // 비교선(뒤가 아니라 위에 얹어 실루엣이 보이도록)
+  const refPath = el("path", {
+    id: "refPath", fill: "none", stroke: C.ink, "stroke-width": 1.8,
+    "stroke-dasharray": "5 4", opacity: 0.75, "stroke-linejoin": "round"
+  });
+  svg.appendChild(refPath);
 
-                // 2. Birth cohort weight based on TFR relative to replacement level (2.1)
-                // Younger cohorts (a <= 35) reflect recent TFR trends strongly
-                let tfrFactor = 1.0;
-                if (midAge <= 35) {
-                    const weightFactor = (35 - midAge) / 35;
-                    tfrFactor = Math.pow(tfr / 2.1, 0.8 + weightFactor * 0.8);
-                } else if (midAge <= 60) {
-                    tfrFactor = Math.pow(Math.max(tfr, 1.5) / 2.1, 0.4);
-                }
+  // 가운데 칸 테두리
+  svg.appendChild(el("line", { x1: XL, y1: TOP, x2: XL, y2: BOT, stroke: C.line }));
+  svg.appendChild(el("line", { x1: XR, y1: TOP, x2: XR, y2: BOT, stroke: C.line }));
 
-                // Base cohort size
-                let baseVal = survival * tfrFactor * 100;
+  return { bars, refPath };
+}
 
-                // Gender split (Male slightly higher at birth ~51%, Female higher survival at extreme old age)
-                let maleRatio = 0.51;
-                let femaleRatio = 0.49;
+function refOutline(groups, maxPct) {
+  // 계단 모양 실루엣 (왼쪽 남자 · 오른쪽 여자)
+  const mk = (sexIdx, sign, x0) => {
+    let d = `M ${x0} ${BOT}`;
+    for (let g = 0; g < 21; g++) {
+      const y = rowY(g), w = groups[g][sexIdx] / maxPct * PLOT;
+      d += ` L ${x0 + sign * w} ${y + ROWH} L ${x0 + sign * w} ${y}`;
+    }
+    d += ` L ${x0} ${TOP}`;
+    return d;
+  };
+  return mk(0, -1, XL) + " " + mk(1, 1, XR);
+}
 
-                if (midAge > 65) {
-                    const excessFemale = (midAge - 65) * 0.005;
-                    femaleRatio = Math.min(0.68, 0.49 + excessFemale);
-                    maleRatio = 1.0 - femaleRatio;
-                }
+/* ========== 3. 화면 갱신 ============================================ */
+const $ = (id) => document.getElementById(id);
+let frame = null, curMax = -1;
 
-                const maleVal = baseVal * maleRatio;
-                const femaleVal = baseVal * femaleRatio;
+function maxCell(groups) {
+  let m = 0;
+  for (const g of groups) m = Math.max(m, g[0], g[1]);
+  return m;
+}
 
-                rawMale.push(maleVal);
-                rawFemale.push(femaleVal);
+function render() {
+  const tfr = parseFloat($("tfr").value);
+  const le = parseFloat($("le").value);
+  $("tfrVal").textContent = tfr.toFixed(2);
+  $("leVal").textContent = le.toFixed(1);
 
-                totalPop += (maleVal + femaleVal);
-            }
+  const res = compute(tfr, le);
 
-            // Normalize values so that overall total population = 100%
-            let youthPop = 0;    // 0-14 yrs (indices 0, 1, 2)
-            let workingPop = 0;  // 15-64 yrs (indices 3 to 12)
-            let elderlyPop = 0;  // 65+ yrs (indices 13 to 18)
+  const refSel = $("ref").value;
+  let refRes = null;
+  if (refSel !== "none") {
+    const [rt, rl] = refSel.split("|").map(Number);
+    refRes = compute(rt, rl);
+  }
 
-            for (let i = 0; i < ageLabels.length; i++) {
-                const mPct = (rawMale[i] / totalPop) * 100;
-                const fPct = (rawFemale[i] / totalPop) * 100;
+  // 두 그래프가 같은 자로 비교되도록 축을 함께 정함
+  const maxPct = niceMax(Math.max(maxCell(res.groups), refRes ? maxCell(refRes.groups) : 0) * 1.08);
+  if (maxPct !== curMax) { frame = buildFrame(maxPct); curMax = maxPct; }
 
-                // Chart.js convention: Male negative (left), Female positive (right)
-                maleData.push(-mPct);
-                femaleData.push(fPct);
+  for (let g = 0; g < 21; g++) {
+    const wm = res.groups[g][0] / maxPct * PLOT;
+    const wf = res.groups[g][1] / maxPct * PLOT;
+    frame.bars[g][0].setAttribute("x", XL - wm);
+    frame.bars[g][0].setAttribute("width", wm);
+    frame.bars[g][1].setAttribute("width", wf);
+  }
 
-                const groupTotal = mPct + fPct;
-                if (i <= 2) {
-                    youthPop += groupTotal;
-                } else if (i <= 12) {
-                    workingPop += groupTotal;
-                } else {
-                    elderlyPop += groupTotal;
-                }
-            }
+  if (refRes) {
+    frame.refPath.setAttribute("d", refOutline(refRes.groups, maxPct));
+    frame.refPath.setAttribute("visibility", "visible");
+    $("refLeg").style.display = "";
+    $("refLeg").textContent = "┈ 비교선: " + $("ref").selectedOptions[0].textContent;
+  } else {
+    frame.refPath.setAttribute("visibility", "hidden");
+    $("refLeg").style.display = "none";
+  }
 
-            return {
-                maleData,
-                femaleData,
-                youthPop,
-                workingPop,
-                elderlyPop
-            };
-        }
+  // 숫자
+  const { youth, work, old } = res;
+  $("pYouth").textContent = youth.toFixed(1);
+  $("pWork").textContent = work.toFixed(1);
+  $("pOld").textContent = old.toFixed(1);
+  $("bYouth").style.width = youth + "%";
+  $("bWork").style.width = work + "%";
+  $("bOld").style.width = old + "%";
 
-        // Main update function triggered by sliders
-        function updateSimulation() {
-            const tfr = parseFloat(document.getElementById('tfrSlider').value);
-            const lifeExp = parseInt(document.getElementById('lifeSlider').value);
+  const dep = (youth + old) / work * 100;
+  const odep = old / work * 100;
+  const aging = old / youth * 100;
+  $("sDep").textContent = dep.toFixed(1);
+  $("sOdep").textContent = odep.toFixed(1);
+  $("sAgeIdx").textContent = aging.toFixed(0);
+  $("sGrow").textContent = (res.r * 100 >= 0 ? "+" : "") + (res.r * 100).toFixed(2);
+  const fut = Math.exp(res.r * 100);
+  $("sFut").textContent = fut >= 10 ? fut.toFixed(0) : (fut >= 0.1 ? fut.toFixed(2) : fut.toFixed(3));
+  $("sSex").textContent = res.e0m.toFixed(1) + " / " + res.e0f.toFixed(1);
 
-            // Update UI slider text displays
-            document.getElementById('tfrValue').innerText = tfr.toFixed(2) + ' 명';
-            document.getElementById('lifeValue').innerText = lifeExp + ' 세';
+  let type, why;
+  const gr = res.r * 100;                       // %/년
+  if (youth >= 30 || gr > 0.5) { type = "피라미드형"; why = "인구가 늘어나는 구조 — 아래가 넓다"; }
+  else if (gr >= -0.5) { type = "종형"; why = "인구가 거의 늘지도 줄지도 않는 구조"; }
+  else { type = "방추형(항아리형)"; why = "인구가 줄어드는 구조 — 아래가 좁다"; }
+  $("sType").textContent = type;
+  $("sWhy").textContent = why;
 
-            // Calculate new cohort distributions
-            const res = calculatePopulationData(tfr, lifeExp);
+  // 프리셋 표시 갱신
+  document.querySelectorAll(".chip").forEach(b => {
+    const on = Math.abs(+b.dataset.tfr - tfr) < 0.005 && Math.abs(+b.dataset.le - le) < 0.05;
+    b.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+}
 
-            // Update Chart.js datasets
-            pyramidChart.data.datasets[0].data = res.maleData;
-            pyramidChart.data.datasets[1].data = res.femaleData;
-            pyramidChart.update();
+$("tfr").addEventListener("input", render);
+$("le").addEventListener("input", render);
+$("ref").addEventListener("change", render);
+document.querySelectorAll(".chip").forEach(b => {
+  b.addEventListener("click", () => {
+    $("tfr").value = b.dataset.tfr;
+    $("le").value = b.dataset.le;
+    render();
+  });
+});
 
-            // Update numeric indicator cards
-            document.getElementById('youthRatio').innerText = res.youthPop.toFixed(1) + '%';
-            document.getElementById('workingRatio').innerText = res.workingPop.toFixed(1) + '%';
-            document.getElementById('elderlyRatio').innerText = res.elderlyRatio ? res.elderlyRatio.toFixed(1) + '%' : res.elderlyPop.toFixed(1) + '%';
-
-            // Calculate Dependency Ratios & Aging Index
-            const totalDependency = ((res.youthPop + res.elderlyPop) / res.workingPop) * 100;
-            const agingIndex = (res.elderlyPop / res.youthPop) * 100;
-
-            document.getElementById('totalDependency').innerText = totalDependency.toFixed(1);
-            document.getElementById('agingIndex').innerText = isFinite(agingIndex) ? agingIndex.toFixed(1) : '999+';
-
-            // Determine Society Type Badge & Pyramid Shape Label
-            const badge = document.getElementById('societyTypeBadge');
-            const shapeLabel = document.getElementById('shapeName');
-
-            const elderlyRatio = res.elderlyPop;
-
-            if (elderlyRatio >= 20.0) {
-                badge.className = 'p-3 rounded-lg border text-center font-bold text-sm bg-rose-100 text-rose-800 border-rose-300';
-                badge.innerText = `🚨 초고령 사회 (노년 비율 ${elderlyRatio.toFixed(1)}% ≥ 20%)`;
-            } else if (elderlyRatio >= 14.0) {
-                badge.className = 'p-3 rounded-lg border text-center font-bold text-sm bg-amber-100 text-amber-800 border-amber-300';
-                badge.innerText = `⚠️ 고령 사회 (노년 비율 ${elderlyRatio.toFixed(1)}% ≥ 14%)`;
-            } else if (elderlyRatio >= 7.0) {
-                badge.className = 'p-3 rounded-lg border text-center font-bold text-sm bg-yellow-100 text-yellow-800 border-yellow-300';
-                badge.innerText = `🟡 고령화 사회 (노년 비율 ${elderlyRatio.toFixed(1)}% ≥ 7%)`;
-            } else {
-                badge.className = 'p-3 rounded-lg border text-center font-bold text-sm bg-emerald-100 text-emerald-800 border-emerald-300';
-                badge.innerText = `🟢 청년 사회 / 고령화 이전 (노년 비율 ${elderlyRatio.toFixed(1)}% < 7%)`;
-            }
-
-            // Shape diagnosis logic
-            if (tfr >= 3.0 && lifeExp < 70) {
-                shapeLabel.innerText = '피라미드형 (기반 확대형 - 개발도상국)';
-                shapeLabel.className = 'text-emerald-600 font-bold';
-            } else if (tfr < 1.4) {
-                shapeLabel.innerText = '항아리형 (기반 감축형 - 초저출산·초고령화)';
-                shapeLabel.className = 'text-rose-600 font-bold';
-            } else if (tfr >= 1.7 && tfr <= 2.3 && lifeExp >= 75) {
-                shapeLabel.innerText = '종형 (정체형 - 선진국 인구안정기)';
-                shapeLabel.className = 'text-blue-600 font-bold';
-            } else {
-                shapeLabel.innerText = '혼합형/변이형 피라미드';
-                shapeLabel.className = 'text-indigo-600 font-bold';
-            }
-        }
-
-        // Preset Apply Function
-        function applyPreset(type) {
-            const tfrSlider = document.getElementById('tfrSlider');
-            const lifeSlider = document.getElementById('lifeSlider');
-
-            switch (type) {
-                case 'pyramid': // 피라미드형 (1960년대 한국 / 개도국)
-                    tfrSlider.value = 5.5;
-                    lifeSlider.value = 58;
-                    break;
-                case 'bell': // 종형 (1990년대 선진국)
-                    tfrSlider.value = 2.0;
-                    lifeSlider.value = 78;
-                    break;
-                case 'pot': // 항아리형 (초고령화)
-                    tfrSlider.value = 1.0;
-                    lifeSlider.value = 86;
-                    break;
-                case 'korea2026': // 대한민국 현재 (2026년 기준)
-                    tfrSlider.value = 0.72;
-                    lifeSlider.value = 84;
-                    break;
-            }
-            updateSimulation();
-        }
-
-        // Initialize on Window Load
-        window.onload = function() {
-            initChart();
-            updateSimulation();
-        };
-    </script>
+render();
+</script>
 </body>
 </html>
